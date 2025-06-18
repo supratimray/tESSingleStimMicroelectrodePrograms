@@ -8,21 +8,24 @@ sideChoice = [];
 badTrialNameStr = 'V4';
 useCommonBadTrialsFlag = 1;
 
+% Free variables
+f = 5; o = 5; c = 4; removeERPFlag = 0;
+
 protocolLists = getAllProtocolLists(subjectName);
+protocolsToSave = 1:8;
 
-% Choose a protocolList
-protocolList = protocolLists{8}; % Choose one
-[expDatesAll,protocolNamesAll] = getProtocolListDetails(protocolList);
+for p = 1:length(protocolsToSave)
+    
+    % Choose a protocolList
+    protocolList = protocolLists{protocolsToSave(p)}; % Choose one
+    [expDatesAll,protocolNamesAll] = getProtocolListDetails(protocolList);
 
-uniqueExpDates = unique(expDatesAll,'stable');
+    uniqueExpDates = unique(expDatesAll,'stable');
 
-expDate = uniqueExpDates{3}; % Choose one
-protocolNames = protocolNamesAll(strcmp(expDate,expDatesAll));
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-goodLFPElectrodes = getGoodLFPElectrodes(subjectName,expDate,folderData,gridType);
-
-f = 5;
-o = 5;
-c = 4;
-removeERPFlag = 1;
-savePowerData(subjectName,expDate,protocolNames,folderData,gridType,goodLFPElectrodes,protocolList,f,o,c,removeERPFlag);
+    for i=1:length(uniqueExpDates)
+        expDate = uniqueExpDates{i}; % Choose one
+        protocolNames = protocolNamesAll(strcmp(expDate,expDatesAll));
+        goodLFPElectrodes = getGoodLFPElectrodes(subjectName,expDate,folderData,gridType);
+        savePowerData(subjectName,expDate,protocolNames,folderData,gridType,goodLFPElectrodes,protocolList,f,o,c,removeERPFlag);
+    end
+end
