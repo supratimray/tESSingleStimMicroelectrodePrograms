@@ -1,7 +1,8 @@
 % Objective of the code is to pull information on good spiking units
 % Already analysed information is stored in GoodUnitsV1/V4.mat
+% cutoffs: a 4-D array with cutoffs for firingRate, snr, total spikes and absolute change in firing rate.
 
-function goodSpikeElecs = getGoodSpikeInfo(subjectName,expDate,folderData,protocolNames,badTrialNameStr,session,gridType,commonUnitFlag)
+function [goodSpikeElectrodes, cutoffVals] = getGoodSpikeInfo(subjectName, expDate, protocolNames, folderData, badTrialNameStr, session, gridType, commonUnitFlag)
 if ~exist('gridType','var');            gridType = 'Microelectrode';    end
 if ~exist('commonUnitFlag','var');           commonUnitFlag = 0;    end
 
@@ -18,9 +19,9 @@ goodSpkGrid = cell(nProtocols, 1);
 if commonUnitFlag
     for i = 1:nProtocols
         fileName = fullfile(folderData, 'data', subjectName, gridType, expDate, protocolNames{i}, 'segmentedData', append('GoodUnits', badTrialNameStr, '.mat'));
-        temp = load(fileName, 'goodSpikeElectrodes');
+        temp = load(fileName, 'goodSpikeElectrodes','cutoffs');
         goodSpkGrid{i} = temp.goodSpikeElectrodes;
-    end
+    end 
 
     % Identify and exclude the stimulation block
     nonStimIndices = setdiff(1:nProtocols, stimBlock);
@@ -30,10 +31,12 @@ if commonUnitFlag
     for k = nonStimIndices(2:end)
         commonGood = intersect(commonGood, goodSpkGrid{k});
     end
-    goodSpikeElecs = commonGood;
+    goodSpikeElectrodes = commonGood;
+    cutoffVals=temp.cutoffs;
 else
     fileName=fullfile(folderData,'data',subjectName,gridType,expDate,'GRF_001','segmentedData',append('GoodUnits', badTrialNameStr, '.mat'));
-    temp = load(fileName, 'goodSpikeElectrodes');
-    goodSpikeElecs =temp.goodSpikeElectrodes;
+    temp = load(fileName, 'goodSpikeElectrodes','cutoffs');
+    goodSpikeElectrodes =temp.goodSpikeElectrodes;
+    cutoffVals=temp.cutoffs;
 end
 end
