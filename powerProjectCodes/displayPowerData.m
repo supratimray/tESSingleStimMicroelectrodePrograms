@@ -234,14 +234,14 @@ uicontrol('Parent',hPlotOptionsPanel,'Unit','Normalized', ...
 
                 plot(hDeltaPSDPlots1(ii,numPlots),dataOut{i}.freqBL,dataOut{i}.deltaPSD,'color',plotColor);
                 hold(hDeltaPSDPlots1(ii,numPlots),'on');
-                
+
 
                 % DeltaPSD2
                 dataToPlot = squeeze(data{ii}.logDeltaPSD(:,i,:) - data{ii}.logDeltaPSD(:,1,:)); % Change in deltaPSD from the first one
-                
+
                 displayMeanSEMSignificance(hDeltaPSDPlots2(ii,i),dataToPlot,dataOut{i}.freqBL,plotColor,1,[-2.5 2.5]); % Plot mean and SEM
                 plot(hDeltaPSDPlots2(ii,i),dataOut{i}.freqBL,zeros(1,length(dataOut{i}.freqBL)),'color','k','linestyle','--');
-                
+
                 displayMeanSEMSignificance(hDeltaPSDPlots2(ii,numPlots),dataToPlot,dataOut{i}.freqBL,plotColor,0); % Plot mean and SEM
             end
             ylabel(hSpikePlots(1,1),'Firing Rate',FontWeight='bold',FontSize=7.5);
@@ -266,23 +266,23 @@ uicontrol('Parent',hPlotOptionsPanel,'Unit','Normalized', ...
         rescaleData(hTFPlots,stimRange,fftRange);
         zRange = getZLims(hTFPlots);
         set(hZMin,'String',num2str(zRange(1))); set(hZMax,'String',num2str(zRange(2)));
-        rescaleZPlots(hTFPlots,zRange);        
+        rescaleZPlots(hTFPlots,zRange);
         rescaleData(hDeltaPSDPlots1,fftRange,getYLims(hDeltaPSDPlots1));
         rescaleData(hDeltaPSDPlots2,fftRange,getYLims(hDeltaPSDPlots2));
 
-         for i=1:numProtocols
+        for i=1:numProtocols
             title(hSpikePlots(1,i),protocolNameString{i});
             for cnd=1:2
                 subplot(hTFPlots(cnd,i))
                 yline(powerRange,LineWidth=1.5,LineStyle="--",FontWeight="bold")
             end
-         end
-          for cnd =1:2
+        end
+        for cnd =1:2
             subplot(hDeltaPSDPlots1(cnd,numProtocols+1))
             xline(powerRange,LineWidth=1.5,LineStyle="--",FontWeight="bold")
             subplot(hDeltaPSDPlots2(cnd,numProtocols+1))
             xline(powerRange,LineWidth=1.5,LineStyle="--",FontWeight="bold")
-          end
+        end
     end
     function rescaleZ_Callback(~,~)
         zRange = [str2double(get(hZMin,'String')) str2double(get(hZMax,'String'))];
@@ -300,7 +300,7 @@ uicontrol('Parent',hPlotOptionsPanel,'Unit','Normalized', ...
     end
     function cla_Callback(~,~)
         claGivenPlotHandle(hSpikePlots);
-        claGivenPlotHandle(hTFPlots);       
+        claGivenPlotHandle(hTFPlots);
         claGivenPlotHandle(hDeltaPSDPlots1);
         claGivenPlotHandle(hDeltaPSDPlots2);
         claGivenPlotHandle(hDeltaPower);
@@ -429,7 +429,7 @@ for i=1:numProtocols
     AllfrVals = []; deltaTF = []; SBL = []; SST = []; deltaPSD = []; totalE = 0; totalSpkE=0;
     for j=1:numExperiments
         numE = length(dataIn{j}.goodLFPElectrodes);
-        [~,spkEID] = ismember(intersect(dataIn{j}.goodSpikeElecs,dataIn{j}.goodLFPElectrodes),dataIn{j}.goodLFPElectrodes);
+        [~,spkEID] = ismember(intersect(dataIn{j}.goodSpikeElectrodes,dataIn{j}.goodLFPElectrodes),dataIn{j}.goodLFPElectrodes);
         numSpkE=length(spkEID);
         tmp = dataIn{j}.dataOut{i};
         tmpSpk = cellfun(@(s) s.frVals, dataIn{j}.dataOutShort(spkEID,i), 'UniformOutput', false);
@@ -464,7 +464,7 @@ for i=1:numExperiments
     combinedData.logDeltaPSD = cat(1,combinedData.logDeltaPSD,dataIn{i}.logDeltaPSD);
     combinedData.logDeltaPower = cat(1,combinedData.logDeltaPower,dataIn{i}.logDeltaPower);
     clear spkEID
-    [~,spkEID] = ismember(intersect(dataIn{i}.goodSpikeElecs,dataIn{i}.goodLFPElectrodes),dataIn{i}.goodLFPElectrodes);
+    [~,spkEID] = ismember(intersect(dataIn{i}.goodSpikeElectrodes,dataIn{i}.goodLFPElectrodes),dataIn{i}.goodLFPElectrodes);
     combinedData.frDeltaPower = cat(1,combinedData.frDeltaPower,dataIn{i}.frDeltaPower(spkEID,:));
 end
 
@@ -486,10 +486,13 @@ end
 function dataOut = getSavedDataSingleProtocol(savedFileName,f,o,c,removeERPFlag,powerRange,stimulusPos,removeStimProtocolFlag,stimPos)
 numLists = length(savedFileName);
 folderOut = 'savedData';
+folderOutSpike = 'savedSpikeInfo';
 
 dataOut = cell(1,numLists);
 for i=1:numLists
     fileSave = fullfile(folderOut,[savedFileName{i} '_f' num2str(f) 'o' num2str(o) 'c' num2str(c) '_removeERP' num2str(removeERPFlag) '.mat']);
+    fileMatch = dir(fullfile(folderOutSpike, [savedFileName{i} '*.mat']));% Matching Spike information unique file name
+    fileSaveSpikeInfo = fullfile(folderOutSpike, fileMatch(1).name);
     if exist(fileSave,'file')
         data = load(fileSave);
         if removeStimProtocolFlag
@@ -500,6 +503,11 @@ for i=1:numLists
         disp([fileSave ' does not exist']);
         data = [];
     end
+    if exist(fileSaveSpikeInfo,'file')
+        spikeInfo=load(fileSaveSpikeInfo);
+        data.goodSpikeElectrodes = spikeInfo.goodSpikeElectrodes;
+    end
+
     dataOut{i} = data;
 
     % Get relevant values for individual electrodes
@@ -514,7 +522,7 @@ for i=1:numLists
     logDeltaPSD = zeros(numElectrodes,numProtocols,numFreqPos);
     logDeltaPower = zeros(numElectrodes,numProtocols);
     frDeltaPower = zeros(numElectrodes,numProtocols);
-    
+
     for j=1:numElectrodes
         for k=1:numProtocols
             tmp = data.dataOutShort{j,k};
@@ -544,7 +552,7 @@ for i=1:numLists
 
     fileNameList = [];
     for j=1:length(tmpProtocolListsToUse)
-        
+
         expDatesAll = getProtocolListDetails(tmpProtocolListsToUse{j});
         uniqueExpDates = unique(expDatesAll,'stable');
         numUniqueExpDates = length(uniqueExpDates);
