@@ -26,8 +26,7 @@ for p = 1:length(protocolsToSave)
     for i=1:length(uniqueExpDates)
         expDate = uniqueExpDates{i}; % Choose one
         protocolNames = protocolNamesAll(strcmp(expDate,expDatesAll));
-        goodLFPElectrodes = getGoodLFPElectrodes(subjectName,expDate,folderData,gridType);
-        goodSpikeElecs = getGoodSpikeInfo(subjectName,expDate,folderData,protocolNames,badTrialNameStr,session,gridType,commonUnitFlag);
-        savePowerData(subjectName,expDate,protocolNames,folderData,gridType,goodLFPElectrodes,goodSpikeElecs,protocolList,f,o,c,removeERPFlag,badTrialNameStr,useCommonBadTrialsFlag);
+        goodLFPElectrodes = getGoodLFPElectrodes(subjectName,expDate,folderData,gridType);       
+        savePowerData(subjectName,expDate,protocolNames,folderData,gridType,goodLFPElectrodes,protocolList,f,o,c,removeERPFlag,badTrialNameStr,useCommonBadTrialsFlag);
     end
 end
