@@ -2,7 +2,7 @@
 % compatibility, we save data in a format that is used in the program
 % displaySingleChannelGRFs which is available in CommonPrograms.
 
-function savePowerData(subjectName,expDate,protocolNames,folderSourceString,gridType,goodLFPElectrodes,goodSpikeElecs,protocolList,f,o,c,removeERPFlag,badTrialNameStr,useCommonBadTrialsFlag)
+function savePowerData(subjectName,expDate,protocolNames,folderSourceString,gridType,goodLFPElectrodes,protocolList,f,o,c,removeERPFlag,badTrialNameStr,useCommonBadTrialsFlag)
 
 % These are hardcoded options. If these are changed, data needs to be saved again
 referenceChannelString = '';
@@ -17,7 +17,6 @@ makeDirectory(folderOut);
 
 numProtocols = length(protocolNames);
 numGoodLFPElectrodes = length(goodLFPElectrodes);
-% numGoodSpikeElectrodes = length(goodSpikeElecs);
 
 fileSave = fullfile(folderOut,[protocolList '_' expDate '_f' num2str(f) 'o' num2str(o) 'c' num2str(c) '_removeERP' num2str(removeERPFlag) '.mat']);
 
@@ -47,6 +46,6 @@ else
     end
     dataOut = combineDataGRF(dataOutTMP1);
 
-    save(fileSave,'dataOut','dataOutShort','goodLFPElectrodes','goodSpikeElecs');
+    save(fileSave,'dataOut','dataOutShort','goodLFPElectrodes');
 end
 end
