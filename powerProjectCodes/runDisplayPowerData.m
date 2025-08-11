@@ -12,4 +12,4 @@ protocolListsToUse{2} = protocolLists(group2);
 
 
 removeStimProtocolFlag = 1;
-displayPowerData2(protocolListsToUse,removeStimProtocolFlag,session);
+displayPowerData(protocolListsToUse,removeStimProtocolFlag,session);
