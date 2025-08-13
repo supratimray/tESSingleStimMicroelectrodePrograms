@@ -1,5 +1,5 @@
 subjectName = 'jojo';
-folderData = 'Z:\Projects\ProjectVajra\tESSingleStimMicroelectrode'; % This is the folder where the folder 'data' with segmented data is kept. We assume that badTrials are available also
+folderData = 'N:\Projects\ProjectVajra\tESSingleStimMicroelectrode'; % This is the folder where the folder 'data' with segmented data is kept. We assume that badTrials are available also
 session='single';% It can be 'single','dual','dual60'
 
 protocolLists = getAllProtocolLists(subjectName);

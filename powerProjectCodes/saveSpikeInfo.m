@@ -1,11 +1,12 @@
 % cutoffs: a 4-D array with cutoffs for firingRate, snr, total spikes and absolute change in firing rate.
 % In case of dona, its [1 1.2 0 0.3], on analog days [1 1 0 0.3], for jojo its [1 1.5 0 1]
-function saveSpikeInfo(subjectName, expDate, protocolNames, folderData, badTrialNameStr, session, gridType, protocolList, commonUnitFlag)
+
+function saveSpikeInfo(subjectName, expDate, protocolNames, folderData, badTrialNameStr, session, gridType, protocolList, commonUnitFlag, cutoffVals)
 
 folderOut = 'savedSpikeInfo';
 makeDirectory(folderOut);
 
-[goodSpikeElectrodes, cutoffVals] = getGoodSpikeInfo(subjectName, expDate, protocolNames, folderData, badTrialNameStr, session, gridType, commonUnitFlag);
+goodSpikeElectrodes = getGoodSpikeInfo(subjectName, expDate, protocolNames, folderData, badTrialNameStr, session, gridType, commonUnitFlag, cutoffVals);
 
 fileSave = fullfile(folderOut, ...
     [protocolList '_' expDate ...
