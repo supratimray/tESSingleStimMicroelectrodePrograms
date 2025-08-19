@@ -1,21 +1,21 @@
 % Modified from displaySingleChannelGRFs
 
-function displayPowerData(protocolListsToUse,removeStimProtocolFlag,session)
+function displayPowerData(protocolListsToUse,removeStimProtocolFlag,session,cutoffVals)
 
 % Hardcoded for simplicity
 fValsUnique = [0.5 1 2 4]; % Spatial Frequency
 oValsUnique = [0 45 90 135];  % Orientation
 cValsUnique = [25 50 100]; % Contrast
-stimulusPos = [0.25 0.75];
+stimulusPeriod = [0.25 0.75]; % For calculation of average firing rate
 
-[colCode,titleString,stimblockID]=pickIDs(session);
+[colCode,titleString,stimblockID] = pickIDs(session);
 protocolNameString = titleString; % Name of protocols
 numProtocols = length(protocolNameString); % Total number of protocols
-stimPos =stimblockID; % Protocol position(s) of stimulation
+stimPos = stimblockID; % Protocol position(s) of stimulation
 
 if removeStimProtocolFlag
     protocolNameString(stimPos) = [];
-    colCode(stimPos)=[];
+    colCode(stimPos) = [];
     numProtocols = length(protocolNameString);
 end
 colorNames = colCode;
@@ -32,7 +32,7 @@ hSpikePlots    = getPlotHandles(numLists,numPlots,[0.025 0.670 0.75 0.15],0.002)
 hTFPlots       = getPlotHandles(numLists,numPlots,[0.025 0.455 0.75 0.19],0.002);
 hDeltaPSDPlots1 = getPlotHandles(numLists,numPlots,[0.025 0.24 0.75 0.19],0.002);
 hDeltaPSDPlots2 = getPlotHandles(numLists,numPlots,[0.025 0.02 0.75 0.19],0.002);
-hDeltaSpike = getPlotHandles(1,1,[0.81 0.670 0.18 0.15],0.002,0.035,0);
+hDeltaSpike    = getPlotHandles(1,1,[0.81 0.670 0.18 0.15],0.002,0.035,0);
 hDeltaPower    = getPlotHandles(numLists+1,1,[0.81 0.025 0.18 0.62],0.03,0.035,0);
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -91,13 +91,18 @@ hContrast = uicontrol('Parent',hParameterPanel,'Unit','Normalized', ...
     'Style','popup','String',contrastString,'FontSize',fontSizeSmall);
 
 hRemoveERP = uicontrol('Parent',hParameterPanel,'Unit','Normalized', ...
-    'BackgroundColor', backgroundColor, 'Position',[0 0 0.5 0.25], ...
+    'BackgroundColor', backgroundColor, 'Position',[0 0 1/3 0.25], ...
     'Style','togglebutton','String','remove ERP','FontSize',fontSizeMedium);
 
 hNormalize = uicontrol('Parent',hParameterPanel,'Unit','Normalized', ...
     'BackgroundColor', backgroundColor, ...
-    'Position',[0.5 0 0.5 0.25], ...
+    'Position',[1/3 0 1/3 0.25], ...
     'Style','togglebutton','String','Normalize','FontSize',fontSizeMedium);
+
+hDiffMode = uicontrol('Parent',hParameterPanel,'Unit','Normalized', ...
+    'BackgroundColor', backgroundColor, ...
+    'Position',[2/3 0 1/3 0.25], ...
+    'Style','togglebutton','String','DiffMode','FontSize',fontSizeMedium);
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%% Ranges panel %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 rangesHeight = 0.25; rangesTextWidth = 0.5; rangesBoxWidth = 0.25;
@@ -199,32 +204,39 @@ uicontrol('Parent',hPlotOptionsPanel,'Unit','Normalized', ...
         c=get(hContrast,'val');
         removeERPFlag = get(hRemoveERP,'val');
         normalizeFlag = get(hNormalize,'val');
+        diffModeFlag = get(hDiffMode,'val');
 
         stimRange = [str2double(get(hStimMin,'String')) str2double(get(hStimMax,'String'))];
         fftRange = [str2double(get(hFFTMin,'String')) str2double(get(hFFTMax,'String'))];
         powerRange = [str2double(get(hPowerMin,'String')) str2double(get(hPowerMax,'String'))];
 
         % Get Data
-        data = getSavedData(savedFileName,f,o,c,removeERPFlag,powerRange,stimulusPos,removeStimProtocolFlag,stimPos,savedFileNames);
+        data = getSavedData(savedFileName,f,o,c,removeERPFlag,powerRange,stimulusPeriod,removeStimProtocolFlag,stimPos,savedFileNames,cutoffVals);
+
+        if normalizeFlag
+            data = normalizeData(data); % Option to normalize the firing rates
+        end
 
         % Plot Data
         powerDataToPlot = cell(1,numLists);
-        tmpspk = cell(1,numLists);
+
         for ii=1:numLists
             dataOut = data{ii}.dataOut;
-            if normalizeFlag
-                normalizeData(dataOut);
-            end
+            
             for i=1:numProtocols
                 plotColor = colorNames{1,i}{1,1};
 
                 % Spikes
-                plot(hSpikePlots(ii,i),dataOut{i}.frTimeVals,dataOut{i}.frVals,'color',plotColor);
-                plot(hSpikePlots(ii,numPlots),dataOut{i}.frTimeVals,dataOut{i}.frVals,'color',plotColor);
+                plot(hSpikePlots(ii,i),dataOut{i}.frTimeVals,squeeze(mean(data{ii}.goodFRVals(:,i,:),1)),'color',plotColor);
+                plot(hSpikePlots(ii,numPlots),dataOut{i}.frTimeVals,squeeze(mean(data{ii}.goodFRVals(:,i,:),1)),'color',plotColor);
                 hold(hSpikePlots(ii,numPlots),'on');
 
                 % deltaTF
-                pcolor(hTFPlots(ii,i),dataOut{i}.timeTF,dataOut{i}.freqTF,dataOut{i}.deltaTF');
+                if diffModeFlag
+                    pcolor(hTFPlots(ii,i),dataOut{i}.timeTF,dataOut{i}.freqTF,dataOut{i}.deltaTF' - dataOut{1}.deltaTF');
+                else
+                    pcolor(hTFPlots(ii,i),dataOut{i}.timeTF,dataOut{i}.freqTF,dataOut{i}.deltaTF');
+                end
                 shading(hTFPlots(ii,i),'interp');
 
                 % DeltaPSD1
@@ -234,7 +246,6 @@ uicontrol('Parent',hPlotOptionsPanel,'Unit','Normalized', ...
 
                 plot(hDeltaPSDPlots1(ii,numPlots),dataOut{i}.freqBL,dataOut{i}.deltaPSD,'color',plotColor);
                 hold(hDeltaPSDPlots1(ii,numPlots),'on');
-
 
                 % DeltaPSD2
                 dataToPlot = squeeze(data{ii}.logDeltaPSD(:,i,:) - data{ii}.logDeltaPSD(:,1,:)); % Change in deltaPSD from the first one
@@ -254,11 +265,16 @@ uicontrol('Parent',hPlotOptionsPanel,'Unit','Normalized', ...
 
             % Power plot and spike data collection
             tmp = data{ii}.logDeltaPower; % Change in power for all protocols
-            tmpspk{ii}= (data{ii}.frDeltaPower)./(data{ii}.frDeltaPower(:,1));% Normalizing by first protocol
-            displayViolins(hDeltaPower(ii),tmp,colorNames);% Plots Violins
-            powerDataToPlot{ii} = tmp - repmat(tmp(:,1),1,numProtocols); % Change in power relative to the first condition
+            if diffModeFlag
+                powerDataToPlot{ii} = tmp - repmat(tmp(:,1),1,numProtocols); % Change in power relative to the first condition
+                yRange = [-4 4];
+            else
+                powerDataToPlot{ii} = tmp;
+                yRange = [-2 14];
+            end
+            displayViolins(hDeltaPower(ii),powerDataToPlot{ii},colorNames,10,yRange);% Plots Violins
         end
-        displayMeanSEMSignificance2(hDeltaSpike(1),tmpspk{1},tmpspk{2},1:numProtocols,1,protocolNameString);% Plots delta line plots for Spikes
+        displayMeanSEMSignificance2(hDeltaSpike(1),data{1}.meanSpikeCount,data{2}.meanSpikeCount,1:numProtocols,1,protocolNameString);% Plots delta line plots for Spikes
         displayMeanSEMSignificance2(hDeltaPower(numLists+1),powerDataToPlot{1},powerDataToPlot{2},1:numProtocols,1,protocolNameString);% Plots delta line plots for Power
 
         % Rescale
@@ -305,6 +321,7 @@ uicontrol('Parent',hPlotOptionsPanel,'Unit','Normalized', ...
         claGivenPlotHandle(hDeltaPSDPlots2);
         claGivenPlotHandle(hDeltaPower);
         claGivenPlotHandle(hDeltaSpike);
+        delete(findall(gcf,'type','text'));
 
         function claGivenPlotHandle(plotHandles)
             [numRows,numCols] = size(plotHandles);
@@ -426,25 +443,19 @@ tmpDataOut.freqBL = dataIn{1}.dataOut{1}.freqBL;
 tmpDataOut.freqST = dataIn{1}.dataOut{1}.freqST;
 
 for i=1:numProtocols
-    AllfrVals = []; deltaTF = []; SBL = []; SST = []; deltaPSD = []; totalE = 0; totalSpkE=0;
+    frVals = []; deltaTF = []; SBL = []; SST = []; deltaPSD = []; totalE = 0;
     for j=1:numExperiments
         numE = length(dataIn{j}.goodLFPElectrodes);
-        [~,spkEID] = ismember(intersect(dataIn{j}.goodSpikeElectrodes,dataIn{j}.goodLFPElectrodes),dataIn{j}.goodLFPElectrodes);
-        numSpkE=length(spkEID);
         tmp = dataIn{j}.dataOut{i};
-        tmpSpk = cellfun(@(s) s.frVals, dataIn{j}.dataOutShort(spkEID,i), 'UniformOutput', false);
-        fr = cat(1,tmpSpk{:});
-        AllfrVals= [AllfrVals; fr];
+        frVals = cat(1,frVals,numE*tmp.frVals);
         deltaTF = cat(3,deltaTF,numE*tmp.deltaTF);
         SBL = cat(1,SBL,numE*tmp.SBL);
         SST = cat(1,SST,numE*tmp.SST);
         deltaPSD = cat(1,deltaPSD,numE*tmp.deltaPSD);
         totalE = totalE + numE;
-        totalSpkE = totalSpkE + numSpkE;
     end
 
-    tmpDataOut.AllfrVals = AllfrVals;
-    tmpDataOut.frVals = sum(AllfrVals,1)/totalSpkE;
+    tmpDataOut.frVals = sum(frVals,1)/totalE;
     tmpDataOut.deltaTF = sum(deltaTF,3)/totalE;
     tmpDataOut.SBL = sum(SBL,1)/totalE;
     tmpDataOut.SST = sum(SST,1)/totalE;
@@ -455,35 +466,38 @@ end
 
 % Concatenate across experiments (these are not averaged across electrodes)
 combinedData.goodLFPElectrodes = [];
+combinedData.goodSpikeElectrodes = [];
 combinedData.logDeltaPSD = [];
 combinedData.logDeltaPower = [];
-combinedData.frDeltaPower = [];
+combinedData.meanSpikeCount = [];
+combinedData.goodFRVals = [];
 
 for i=1:numExperiments
     combinedData.goodLFPElectrodes = cat(2,combinedData.goodLFPElectrodes,dataIn{i}.goodLFPElectrodes);
     combinedData.logDeltaPSD = cat(1,combinedData.logDeltaPSD,dataIn{i}.logDeltaPSD);
     combinedData.logDeltaPower = cat(1,combinedData.logDeltaPower,dataIn{i}.logDeltaPower);
-    clear spkEID
-    [~,spkEID] = ismember(intersect(dataIn{i}.goodSpikeElectrodes,dataIn{i}.goodLFPElectrodes),dataIn{i}.goodLFPElectrodes);
-    combinedData.frDeltaPower = cat(1,combinedData.frDeltaPower,dataIn{i}.frDeltaPower(spkEID,:));
+
+    combinedData.goodSpikeElectrodes = cat(2,combinedData.goodSpikeElectrodes,dataIn{i}.goodSpikeElectrodes);
+    combinedData.meanSpikeCount = cat(1,combinedData.meanSpikeCount,dataIn{i}.meanSpikeCount);
+    combinedData.goodFRVals = cat(1,combinedData.goodFRVals,dataIn{i}.goodFRVals);
 end
 
 end
-function dataOut = getSavedData(savedFileName,f,o,c,removeERPFlag,powerRange,stimulusPos,removeStimProtocolFlag,stimPos,savedFileNames)
+function dataOut = getSavedData(savedFileName,f,o,c,removeERPFlag,powerRange,stimulusPeriod,removeStimProtocolFlag,stimPos,savedFileNames,cutoffVals)
 numLists = length(savedFileName);
 
 dataOut = cell(1,numLists);
 for i=1:numLists
     if strcmp(savedFileName{i},'all')
-        tmp = getSavedDataSingleProtocol(savedFileNames{i}(1:end-1),f,o,c,removeERPFlag,powerRange,stimulusPos,removeStimProtocolFlag,stimPos); % get data from all except the last one which is 'all'
+        tmp = getSavedDataSingleProtocol(savedFileNames{i}(1:end-1),f,o,c,removeERPFlag,powerRange,stimulusPeriod,removeStimProtocolFlag,stimPos,cutoffVals); % get data from all except the last one which is 'all'
         dataOut{i} = combineData(tmp);
     else
-        tmp = getSavedDataSingleProtocol(savedFileName(i),f,o,c,removeERPFlag,powerRange,stimulusPos,removeStimProtocolFlag,stimPos);
+        tmp = getSavedDataSingleProtocol(savedFileName(i),f,o,c,removeERPFlag,powerRange,stimulusPeriod,removeStimProtocolFlag,stimPos,cutoffVals);
         dataOut{i} = tmp{1};
     end
 end
 end
-function dataOut = getSavedDataSingleProtocol(savedFileName,f,o,c,removeERPFlag,powerRange,stimulusPos,removeStimProtocolFlag,stimPos)
+function dataOut = getSavedDataSingleProtocol(savedFileName,f,o,c,removeERPFlag,powerRange,stimulusPeriod,removeStimProtocolFlag,stimPos,cutoffVals)
 numLists = length(savedFileName);
 folderOut = 'savedData';
 folderOutSpike = 'savedSpikeInfo';
@@ -491,8 +505,7 @@ folderOutSpike = 'savedSpikeInfo';
 dataOut = cell(1,numLists);
 for i=1:numLists
     fileSave = fullfile(folderOut,[savedFileName{i} '_f' num2str(f) 'o' num2str(o) 'c' num2str(c) '_removeERP' num2str(removeERPFlag) '.mat']);
-    fileMatch = dir(fullfile(folderOutSpike, [savedFileName{i} '*.mat']));% Matching Spike information unique file name
-    fileSaveSpikeInfo = fullfile(folderOutSpike, fileMatch(1).name);
+    fileSaveSpikeInfo = fullfile(folderOutSpike, [savedFileName{i} 'Cutoff--fr' num2str(cutoffVals(1)) 'snr' num2str(cutoffVals(2)) 'tspk' num2str(cutoffVals(3)) 'absfr' num2str(cutoffVals(4)) '.mat']);
     if exist(fileSave,'file')
         data = load(fileSave);
         if removeStimProtocolFlag
@@ -505,7 +518,10 @@ for i=1:numLists
     end
     if exist(fileSaveSpikeInfo,'file')
         spikeInfo=load(fileSaveSpikeInfo);
-        data.goodSpikeElectrodes = spikeInfo.goodSpikeElectrodes;
+        data.goodSpikeElectrodes = intersect(spikeInfo.goodSpikeElectrodes,data.goodLFPElectrodes);
+    else
+        disp([fileSaveSpikeInfo ' does not exist. Taking all LFP electrodes for spike analysis']);
+        data.goodSpikeElectrodes = data.goodLFPElectrodes;
     end
 
     dataOut{i} = data;
@@ -514,27 +530,38 @@ for i=1:numLists
     freqVals = data.dataOut{1}.freqST;
     goodFreqPos = getGoodFreqPos(freqVals,powerRange);
     timePos = data.dataOut{1}.frTimeVals;
-    goodTimePosFR = find(timePos>=stimulusPos(1)&timePos<=stimulusPos(2));
+    goodTimePosFR = find(timePos>=stimulusPeriod(1) & timePos<=stimulusPeriod(2));
 
     numFreqPos = length(freqVals);
     [numElectrodes,numProtocols] = size(data.dataOutShort);
 
     logDeltaPSD = zeros(numElectrodes,numProtocols,numFreqPos);
     logDeltaPower = zeros(numElectrodes,numProtocols);
-    frDeltaPower = zeros(numElectrodes,numProtocols);
 
     for j=1:numElectrodes
         for k=1:numProtocols
             tmp = data.dataOutShort{j,k};
             logDeltaPSD(j,k,:) = 10*(log10(tmp.SST) - log10(tmp.SBL));
             logDeltaPower(j,k) = 10*(log10(mean(tmp.SST(goodFreqPos))) - log10(mean(tmp.SBL(goodFreqPos))));
-            frDeltaPower(j,k)= mean(tmp.frVals(goodTimePosFR),2);
+        end
+    end
+
+    numSpikeElectrodes = length(data.goodSpikeElectrodes);
+    meanSpikeCount = zeros(numSpikeElectrodes,numProtocols);
+    goodFRVals = zeros(numSpikeElectrodes,numProtocols,length(tmp.frVals));
+
+    for j=1:numSpikeElectrodes
+        for k=1:numProtocols
+            tmp = data.dataOutShort{data.goodSpikeElectrodes(j)==data.goodLFPElectrodes,k};
+            meanSpikeCount(j,k) = mean(tmp.frVals(goodTimePosFR),2)/diff(stimulusPeriod);
+            goodFRVals(j,k,:) = tmp.frVals;
         end
     end
 
     dataOut{i}.logDeltaPSD = logDeltaPSD;
     dataOut{i}.logDeltaPower = logDeltaPower;
-    dataOut{i}.frDeltaPower = frDeltaPower;
+    dataOut{i}.meanSpikeCount = meanSpikeCount;
+    dataOut{i}.goodFRVals = goodFRVals;
 end
 end
 function goodFreqPos = getGoodFreqPos(freqVals,powerRange)
@@ -567,18 +594,29 @@ end
 end
 function dataOut = normalizeData(dataIn)
 
-numProtocols = length(dataIn);
-dataOut = dataIn;
+numLists = length(dataIn);
+dataOut = cell(1,numLists);
 
-% Normalize Firing rate
-frValsMatrix = zeros(numProtocols,length(dataIn{1}.frVals));
+for i=1:numLists
+    tmpDataOut = dataIn{i};
 
-for i=1:numProtocols
-    frValsMatrix(i,:) = dataIn{i}.frVals;
-end
-maxFRVal = max(1,max(frValsMatrix(:))); % no normalization if max firing rate is less than 1
+    meanSpikeCount = zeros(size(dataIn{i}.meanSpikeCount));
+    goodFRVals = zeros(size(dataIn{i}.goodFRVals));
+    numSpikeElectrodes = size(dataIn{i}.meanSpikeCount,1);
 
-for i=1:numProtocols
-    dataOut{i}.frVals = dataIn{i}.frVals/maxFRVal;
+    for j=1:numSpikeElectrodes
+        tmpSpikeCount = squeeze(dataIn{i}.meanSpikeCount(j,:));
+        maxSpikeCount = max(1,max(tmpSpikeCount)); % no normalization if max value is less than 1
+        meanSpikeCount(j,:) = tmpSpikeCount/maxSpikeCount;
+
+        tmpFRVals = squeeze(dataIn{i}.goodFRVals(j,:,:));
+        maxFRVal = max(1,max(tmpFRVals(:))); % no normalization if max firing rate is less than 1
+        goodFRVals(j,:,:) = tmpFRVals/maxFRVal;
+    end
+
+    tmpDataOut.meanSpikeCount = meanSpikeCount;
+    tmpDataOut.goodFRVals = goodFRVals;
+
+    dataOut{i} = tmpDataOut;
 end
 end

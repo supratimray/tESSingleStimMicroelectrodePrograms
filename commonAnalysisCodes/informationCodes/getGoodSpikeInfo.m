@@ -18,10 +18,7 @@ goodSpkGrid = cell(nProtocols, 1);
 % Locate GoodUnits file
 if commonUnitFlag
     for i = 1:nProtocols
-        fileStr = ['Cutoff_fr' num2str(cutoffVals(1)) ...
-            'snr' num2str(cutoffVals(2)) ...
-            'tspk' num2str(cutoffVals(3)) ...
-            'absfr' num2str(cutoffVals(4))];
+        fileStr = ['Cutoff_fr' num2str(cutoffVals(1)) 'snr' num2str(cutoffVals(2)) 'tspk' num2str(cutoffVals(3)) 'absfr' num2str(cutoffVals(4))];
 
         fileName = fullfile(folderData, 'data', subjectName, gridType, expDate, protocolNames{i}, 'segmentedData', append('GoodUnits', badTrialNameStr, fileStr, '.mat'));
         if exist(fileName,'file')
@@ -45,11 +42,7 @@ if commonUnitFlag
     goodSpikeElectrodes = commonGood;
 
 else
-    fileStr = ['Cutoff_fr' num2str(cutoffVals(1)) ...
-            'snr' num2str(cutoffVals(2)) ...
-            'tspk' num2str(cutoffVals(3)) ...
-            'absfr' num2str(cutoffVals(4))];
-
+    fileStr = ['Cutoff_fr' num2str(cutoffVals(1)) 'snr' num2str(cutoffVals(2)) 'tspk' num2str(cutoffVals(3)) 'absfr' num2str(cutoffVals(4))];
     fileName=fullfile(folderData,'data',subjectName,gridType,expDate,'GRF_001','segmentedData',append('GoodUnits', badTrialNameStr, fileStr, '.mat'));
 
     if exist(fileName,'file')

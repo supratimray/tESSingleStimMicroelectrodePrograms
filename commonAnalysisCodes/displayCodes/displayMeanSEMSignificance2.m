@@ -5,28 +5,25 @@ function displayMeanSEMSignificance2(hPlot,data1,data2,xs,displaySignificanceFla
 % xs: protocol numbers
 
 if ~exist('displaySignificanceFlag','var'); displaySignificanceFlag=0; end
-yLims=[-1.2 1.2]; % Hardcoded y-axis limits
 
-% Statistical Calculation & Data Preparation %
-mData = cell(1,length(xs));
-sData = cell(1,length(xs));
-pValues = zeros(1,length(xs)); 
-hStats = zeros(1,length(xs)); 
+% First, subtract the first column (pre-stim condition) to account for
+% absolute differences in firing rate/power
+numProtocols = size(data1,2);
+data1 = data1 - repmat(data1(:,1),1,numProtocols);
+data2 = data2 - repmat(data2(:,1),1,numProtocols);
 
-for iProt = 1:length(xs)
+% Means and standard errors
+mStim = mean(data1,1); sStim = std(data1,[],1)/sqrt(size(data1,1));
+mSham = mean(data2,1); sSham = std(data2,[],1)/sqrt(size(data2,1));
+mDiff = mStim - mSham; sDiff = (sStim + sSham)/2; % Take the average of the standard errors
+
+pValues = zeros(1,numProtocols); 
+hStats = zeros(1,numProtocols); 
+
+for iProt = 1:numProtocols
     stimSet = data1(:,iProt);
     shamSet = data2(:,iProt);
-    
-    % Get difference in means
-    mData{iProt} = mean(stimSet) - mean(shamSet);
-    
-    % Calculate the standard error of the mean for the difference.
-    n1 = numel(stimSet);
-    n2 = numel(shamSet);
-    s1 = var(stimSet);
-    s2 = var(shamSet);
-    sData{iProt} = sqrt(s1/n1 + s2/n2);
-    
+
     % Perform a two-sample independent t-test.
     % 'Vartype','unequal' handles cases with unequal variances.
     % The test checks if the mean of stimSet is different from the mean of shamSet.
@@ -38,20 +35,24 @@ end
 % Plotting Mean and SEM %
 subplot(hPlot);
 hold(hPlot,'on');
-errorbar(xs, [mData{:}], [sData{:}],'CapSize', 4, 'LineWidth', 1.2, 'Color', 'r');
-axis(hPlot,[[0 length(xs)+1]  yLims]);
+errorbar(xs, mStim, sStim,'CapSize', 4, 'LineWidth', 0.5, 'Color', 'r');
+errorbar(xs, mSham, sSham,'CapSize', 4, 'LineWidth', 0.5, 'Color', 'b');
+errorbar(xs, mDiff, sDiff,'CapSize', 4, 'LineWidth', 2, 'Color', 'g');
+axis tight;
+xlim(hPlot,[0 length(xs)+1]);
 set(hPlot,'XTick',1:length(xs));
 xticklabels(protocolNameString);
 Xax=gca().XAxis;
 Yax=gca().YAxis;
+yMin = min(-1.2,Yax.Limits(1)); yMax = max(1.2,Yax.Limits(2));
+ylim([yMin yMax]);
 set(gca,'FontWeight','bold');
 set(Xax,'FontSize',9);
 set(Yax,'FontSize',9);
 
 % Put number of units/electrodes
-ypoint=mData{end};
-text(length(xs)-0.5,ypoint+1.0,append('n=',num2str(n1)),'fontWeight','bold',HandleVisibility='off'); hold on
-
+text(0,1,append('n=',num2str(size(data1,1))),'color','r','fontWeight','bold',HandleVisibility='off'); hold on
+text(0,0,append('n=',num2str(size(data2,1))),'color','b','fontWeight','bold',HandleVisibility='off'); hold on
 
 % Plotting Significance Stars %
 if displaySignificanceFlag
@@ -61,7 +62,7 @@ if displaySignificanceFlag
         % Plot stars based on the corrected independent t-test on raw data
         if hStats(d) == 1
             subplot(hPlot);
-            ypoint = mData{d};
+            ypoint = mDiff(d);
             
             % Plot stars based on p-values from the ttest2.
             if pValues(d) < 0.0005
@@ -75,6 +76,6 @@ if displaySignificanceFlag
     end
     grid on
     box on
-    title(hPlot,'Stim - Sham','FontSize',9,'FontWeight','bold')
+    title(hPlot,'Stim - Sham','FontSize',9,'FontWeight','bold');
 end
 end

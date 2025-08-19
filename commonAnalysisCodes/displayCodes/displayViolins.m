@@ -1,4 +1,8 @@
-function displayViolins(hPlot, data, colors)
+function displayViolins(hPlot, data, colors, markerSize, yLims)
+
+if ~exist('markerSize','var');  markerSize = 10;                        end
+if ~exist('yLims','var');       yLims = [-3 3];                         end
+
 % displayViolins - Violin + swarm + electrode trend lines, protocol colors, mean points + error bars
 %
 % Inputs:
@@ -8,6 +12,18 @@ function displayViolins(hPlot, data, colors)
 
 [nElecs, nProtocols] = size(data);
 subplot(hPlot);
+
+meanVals = mean(data, 1);
+stderrVals = std(data, 0, 1) ./ sqrt(nElecs);  % standard error
+
+% Violin plot does not give proper results if std is zero. For those
+% entries, we simply add a very small number to make the std non-zero
+
+badPos = find(stderrVals==0);
+for i=1:length(badPos)
+    data(1,badPos(i)) = data(1,badPos(i)) + 10^(-16);
+end
+
 vp = violinplot(data);
 hold on;
 
@@ -20,8 +36,8 @@ xPositions=cell(1,5);
 % Swarmchart plots and color
 for prot = 1:nProtocols
     hold on
-    s = swarmchart(ones(nElecs, 1) * prot, data(:, prot),1.5,colors{1,prot}{1,1},'filled','MarkerFaceAlpha',0.3);
-    pause(0.01)
+    s = swarmchart(ones(nElecs, 1) * prot, data(:, prot),markerSize,colors{1,prot}{1,1},'filled','MarkerFaceAlpha',0.3);
+    pause(0.01); % Apparently the plotting is not accurate if t
     ss=struct(s);
     xPositions{prot} = ss.XYZJittered(:,[1 2]);  % Save actual jittered positions
 end
@@ -40,8 +56,6 @@ for elec = 1:nElecs
 end
 
 %Plot mean & error bars for each protocol%
-meanVals = mean(data, 1);
-stderrVals = std(data, 0, 1) ./ sqrt(nElecs);  % standard error
 meanColor = [0 0 0];  % black
 % Connect mean values with a line
 line(1:nProtocols, meanVals,'linewidth',1.5,'color','r');
@@ -59,8 +73,8 @@ for prot = 1:nProtocols
 end
 
 % Aesthetics
-ylim([-2 14])
-set(hPlot,'YTick',[0 4 8 12]);
+ylim(yLims)
+%set(hPlot,'YTick',[0 4 8 12]);
 xticklabels([]);
 Xax=gca().XAxis;
 Yax=gca().YAxis;
